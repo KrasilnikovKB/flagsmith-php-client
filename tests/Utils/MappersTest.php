@@ -125,6 +125,52 @@ class MappersTest extends TestCase
         $this->assertEquals(2, $mvFeatureWithoutIds->variants[2]->priority); // Third
     }
 
+    public function testMapEnvironmentDocumentToContextMapsIdentityOverridesWithMultipleFeatures(): void
+    {
+        // Given
+        $environmentDocument = json_decode(file_get_contents(__DIR__ . '/../Data/environment.json'));
+        $environmentDocument->identity_overrides = [
+            (object) [
+                'identifier' => 'identity-1',
+                'identity_features' => [
+                    self::_identityFeatureState(2, 'zeta_feature', true, 'zeta-value'),
+                    self::_identityFeatureState(1, 'alpha_feature', false, 'alpha-value'),
+                ],
+            ],
+            (object) [
+                'identifier' => 'identity-2',
+                'identity_features' => [
+                    self::_identityFeatureState(1, 'alpha_feature', false, 'alpha-value'),
+                    self::_identityFeatureState(2, 'zeta_feature', true, 'zeta-value'),
+                ],
+            ],
+        ];
+
+        // When
+        $context = Mappers::mapEnvironmentDocumentToContext($environmentDocument);
+
+        // Then
+        $identityOverrideSegments = array_values(array_filter(
+            $context->segments,
+            fn ($segment) => $segment->metadata['source'] === 'identity_override',
+        ));
+        $this->assertCount(1, $identityOverrideSegments);
+
+        $segment = $identityOverrideSegments[0];
+        $this->assertEquals(['identity-1', 'identity-2'], $segment->rules[0]->conditions[0]->value);
+        $this->assertCount(2, $segment->overrides);
+
+        $this->assertEquals('alpha_feature', $segment->overrides[0]->name);
+        $this->assertFalse($segment->overrides[0]->enabled);
+        $this->assertEquals('alpha-value', $segment->overrides[0]->value);
+        $this->assertEquals(['id' => 1], $segment->overrides[0]->metadata);
+
+        $this->assertEquals('zeta_feature', $segment->overrides[1]->name);
+        $this->assertTrue($segment->overrides[1]->enabled);
+        $this->assertEquals('zeta-value', $segment->overrides[1]->value);
+        $this->assertEquals(['id' => 2], $segment->overrides[1]->metadata);
+    }
+
     public function testMapContextAndIdentityToContextKeepsIdentityOverridesOfEveryIdentity(): void
     {
         // Given

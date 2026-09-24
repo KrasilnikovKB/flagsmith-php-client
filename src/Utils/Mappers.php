@@ -149,7 +149,7 @@ class Mappers
         foreach ($identityOverrides as $identityOverride) {
             $identityFeatures = ((array) $identityOverride->identity_features) ?? [];
             // Sort by feature name to ensure consistent serialization order for $overridesKey
-            uksort($identityFeatures, fn ($a, $b) => strcasecmp($a->feature->name, $b->feature->name));
+            usort($identityFeatures, fn ($a, $b) => strcasecmp($a->feature->name, $b->feature->name));
             if (empty($identityFeatures)) {
                 continue;
             }
